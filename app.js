@@ -1,7 +1,7 @@
 import express from 'express'
 import userRoutes from './routes/userRoutes.js'
+import authRoutes from './routes/authRoutes.js'
 import globalErrorHandler from './controllers/errorController.js'
-import path from 'path'
 import cors from 'cors'
 import { rateLimit } from 'express-rate-limit'
 import morgan from 'morgan'
@@ -25,6 +25,7 @@ if (process.env.NODE_ENV === 'development') {
 // Body parser, reading data from body into req.body
 app.use(express.json());
 
+app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/users', userRoutes);
 
 app.all('*', (req, res, next) => {

@@ -52,25 +52,32 @@ export const restrictTo = (...roles) => {
     }
 }
 
-const signToken = id => {
+const signToken = (id, time) => {
     return jwt.sign({ id }, config.jwt.secret, {
-        expiresIn: config.jwt.expiresIn
+        expiresIn: time
     })
 }
 
 const createSendToken = (user, statusCode, res) => {
-    const token = signToken(user.id);
+    const accessToken = signToken(user.id, config.jwt.ATExpiresIn);
+    const refreshToken = signToken(user.id, config.jwt.RTExpiresIn);
 
-    const cookieOptions = {
+    res.cookie('access_token', accessToken, {
         expires: new Date(
-            Date.now() + config.jwt.cookieExpiresIn * 60 * 60 * 1000
+            Date.now() + config.jwt.ATCookieExpiresIn * 60 * 60 * 1000
         ),
-        httpOnly: true
-    };
-    // cookie only send on secure connection (https)
-    if (process.env.NODE_ENV === 'production') cookieOptions.secure = true;
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production' ? true : false // cookie only send on secure connection (https)
+    });
 
-    res.cookie('access_token', token, cookieOptions);
+    res.cookie('refresh_token', refreshToken, {
+        expires: new Date(
+            Date.now() + config.jwt.RTCookieExpiresIn * 60 * 60 * 1000
+        ),
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production' ? true : false,
+        path: '/refresh-token'
+    });
 
     // remove password from output
     user.password = undefined;
@@ -83,31 +90,6 @@ const createSendToken = (user, statusCode, res) => {
     })
 }
 
-export const signup = catchAsync(
-    async (req, res, next) => {
-        const { firstName, lastName, email, password, passwordConfirm } = req.body;
-
-        if (!firstName || !lastName || !email || !password || !passwordConfirm) {
-            return next(new AppError('Please provide all required fields!', 400));
-        }
-
-        if (password !== passwordConfirm) {
-            return next(new AppError('Passwords do not match!', 400));
-        }
-
-        const filter = {
-            firstName: firstName,
-            lastName: lastName,
-            email: email,
-            password: password,
-        }
-
-        const newUser = await User.create(filter);
-
-        createSendToken(newUser, 201, res);
-    }
-);
-
 export const login = catchAsync(
     async (req, res, next) => {
         const { email, password } = req.body;
@@ -116,8 +98,8 @@ export const login = catchAsync(
             next(new AppError('Please provide email and password!', 400));
         }
 
-        const user = await User.scope('withPassword').findOne({ where: { email: email} });
-        
+        const user = await User.scope('withPassword').findOne({ where: { email: email } });
+
         if (!user || !user.validPassword(password)) {
             next(new AppError('Incorrect email or password', 401));
         }
@@ -130,13 +112,13 @@ export const login = catchAsync(
     }
 )
 
-export const logout = (req, res) => {
-    res.cookie('access_token', '', {
-        expires: new Date(Date.now() + 10 * 1000),
-        httpOnly: true
-    });
+export const signup = catchAsync(
+    async (req, res, next) => {
 
-    res.status(200).json(
-        { status: 'success' }
-    );
+    }
+);
+
+
+export const logout = (req, res) => {
+
 }

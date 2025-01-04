@@ -14,7 +14,9 @@ export default {
     },
     jwt: {
         secret: process.env.JWT_SECRET,
-        expiresIn: process.env.JWT_EXPIRES_IN,
-        cookieExpiresIn: process.env.JWT_COOKIE_EXPIRES_IN
+        ATExpiresIn: process.env.JWT_AT_EXPIRES_IN,
+        RTExpiresIn: process.env.JWT_RT_EXPIRES_IN,
+        ATCookieExpiresIn: process.env.JWT_AT_COOKIE_EXPIRES_IN,
+        RTCookieExpiresIn: process.env.JWT_REFRESH_TOKEN_COOKIE_EXPIRES_IN
     },
 }
