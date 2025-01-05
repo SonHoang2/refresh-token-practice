@@ -3,6 +3,7 @@ import app from "./app.js";
 import config from "./config/config.js";
 import sequelize from "./db.js";
 import User from "./models/userModel.js";
+import { connectRedis } from './redisClient.js';
 
 try {
     await sequelize.authenticate();
@@ -23,6 +24,8 @@ Object.keys(db).forEach((modelName) => {
 });
 
 // sequelize.sync({ force: true })
+
+await connectRedis();
 
 const port = config.port || 5000;
 app.listen(port, () => {

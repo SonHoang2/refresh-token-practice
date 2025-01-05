@@ -17,6 +17,6 @@ export default {
         ATExpiresIn: process.env.JWT_AT_EXPIRES_IN,
         RTExpiresIn: process.env.JWT_RT_EXPIRES_IN,
         ATCookieExpiresIn: process.env.JWT_AT_COOKIE_EXPIRES_IN,
-        RTCookieExpiresIn: process.env.JWT_REFRESH_TOKEN_COOKIE_EXPIRES_IN
+        RTCookieExpiresIn: process.env.JWT_RT_COOKIE_EXPIRES_IN
     },
 }

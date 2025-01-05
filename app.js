@@ -5,6 +5,7 @@ import globalErrorHandler from './controllers/errorController.js'
 import cors from 'cors'
 import { rateLimit } from 'express-rate-limit'
 import morgan from 'morgan'
+import cookieParser from 'cookie-parser'
 import AppError from './utils/AppError.js'
 
 const app = express()
@@ -17,6 +18,7 @@ const limiter = rateLimit({
 })
 
 app.use(limiter)
+app.use(cookieParser())
 
 if (process.env.NODE_ENV === 'development') {
     app.use(morgan('dev'));
