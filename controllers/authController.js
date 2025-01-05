@@ -65,26 +65,29 @@ const createSendToken = async (user, statusCode, res) => {
     const accessToken = signToken(user.id, config.jwt.ATExpiresIn);
     const refreshToken = signToken(user.id, config.jwt.RTExpiresIn);
 
-    res.cookie('access_token', accessToken, {
+    const ATOptions = {
         expires: new Date(
             Date.now() + config.jwt.ATCookieExpiresIn * 60 * 60 * 1000
         ),
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production' ? true : false // cookie only send on secure connection (https)
-    });
+        secure: process.env.NODE_ENV === 'production' ? true : false
+    };
 
-    res.cookie('refresh_token', refreshToken, {
+    const RTOptions = {
         expires: new Date(
             Date.now() + config.jwt.RTCookieExpiresIn * 60 * 60 * 1000
         ),
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production' ? true : false,
         path: '/api/v1/auth/'
-    });
+    };
+
+    res.cookie('access_token', accessToken, ATOptions);
+    res.cookie('refresh_token', refreshToken, RTOptions);
 
     const value = String(user.id);
 
-    await client.set(refreshToken, value, 'EX', 7 * 24 * 60 * 60); // auto delete after 7 days
+    await client.set(refreshToken, value, 'EX', 1 * 24 * 60 * 60); // auto delete after 1 days
 
     // remove password from output
     user.password = undefined;
@@ -146,6 +149,11 @@ export const logout = catchAsync(
     async (req, res) => {
         const { refresh_token: refreshToken } = req.cookies;
 
+        const user = await client.get(refreshToken);
+        if (user) {
+            await client.del(refreshToken);
+        }
+
         const ATOptions = {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production' ? true : false
@@ -157,11 +165,6 @@ export const logout = catchAsync(
             path: '/api/v1/auth/'
         };
 
-        const user = await client.get(refreshToken);
-        if (user) {
-            await client.del(refreshToken);
-        }
-
         res.clearCookie('access_token', ATOptions);
         res.clearCookie('refresh_token', RTOptions);
 
@@ -171,3 +174,55 @@ export const logout = catchAsync(
     }
 )
 
+export const refreshToken = catchAsync(
+    async (req, res, next) => {
+        const { refresh_token: refreshToken } = req.cookies;
+
+        if (!refreshToken) {
+            return next(new AppError('You are not logged in! Please log in to get access', 401));
+        }
+
+        const user = await client.get(refreshToken);
+        if (!user) {
+            jwt.verify(refreshToken, config.jwt.secret, async (err, decoded) => {
+                if (err) {
+                    return next(new AppError('Invalid token', 403));
+                }
+                // Detected refresh token reuse!
+                console.log('attempted refresh token reuse! User: ', decoded.id);
+                return next(new AppError('Invalid token', 403));
+            });
+        }
+
+        await client.del(refreshToken);
+
+        const accessToken = signToken(user, config.jwt.ATExpiresIn);
+        const newRefreshToken = signToken(user, config.jwt.RTExpiresIn);
+
+        await client.set(newRefreshToken, user, 'EX', 1 * 24 * 60 * 60); // auto delete after 1 day
+
+        const ATOptions = {
+            expires: new Date(
+                Date.now() + config.jwt.ATCookieExpiresIn * 60 * 60 * 1000
+            ),
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production' ? true : false
+        };
+
+        const RTOptions = {
+            expires: new Date(
+                Date.now() + config.jwt.RTCookieExpiresIn * 60 * 60 * 1000
+            ),
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production' ? true : false,
+            path: '/api/v1/auth/'
+        };
+
+        res.cookie('access_token', accessToken, ATOptions);
+        res.cookie('refresh_token', newRefreshToken, RTOptions);
+        
+        res.json({
+            status: 'success'
+        })
+    }
+)
